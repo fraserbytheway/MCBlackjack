@@ -13,4 +13,4 @@ TODO:
   * implement win rate to create 3D plot of the best hands
 * implement card split functionality
 * add card counting tracker
-* implement bet size function to player to decide when to double down
+* implement bet size function for player to decide when to double down
