@@ -2,8 +2,8 @@
 Finding optimal strategy in blackjack using monte carlo reinforcement learning
 
 Code Considerations:
-* hash map used to store states O(1) lookup
-* queue used to hold the shuffled card deck, for O(1) removal
+* hash map used to store states, O(1) lookup
+* queue used to hold the shuffled card deck, O(1) removal when dealing cards
 * Implements multiprocessing when running simulations for increased simulation rates
 * OOP used for game logic for clean code
 
