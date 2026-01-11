@@ -1,5 +1,6 @@
 import random
 from collections import deque, defaultdict
+import multiprocessing as mp
 
 class Cards:
     KING = 10
@@ -7,6 +8,9 @@ class Cards:
     JACK = 10
 
 DECK = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, Cards.KING, Cards.QUEEN, Cards.JACK] * 4
+
+def default_q():
+    return {"count": 0, "success": 0.0}
 
 class Person:
     def __init__(self):
@@ -42,7 +46,7 @@ class Player(Person):
         # State is a tuple: (player_total, dealer_upcard, usable_ace_or_aces_count)
         # action is whether stand is true or false
         # Key: (state, action) -> Value: dict of metrics
-        self.q_values = defaultdict(lambda: {"count": 0, "success": 0.0})
+        self.q_values = self.q_values = defaultdict(default_q)
 
     def action(self, d_total):
 
@@ -82,7 +86,7 @@ class Player(Person):
         else:
             update = 1
 
-        for visits in self.states:
+        for visits in set(self.states):
             self.q_values[visits]["count"] += 1
             q = self.q_values[visits]["success"]
             self.q_values[visits]["success"] = q + self.lr * (update - q)
@@ -105,8 +109,8 @@ class Dealer(Person):
             self.stand = True
 
 class Game:
-    def __init__(self, player = Player(), num_decks = 6):
-        self.player = player
+    def __init__(self, player = None, num_decks = 6):
+        self.player = player if player is not None else Player()
         self.dealer = Dealer()
         self.playing = True
         self.dealer_win = None
@@ -131,7 +135,7 @@ class Game:
     def start_deal(self):
         for per in [self.player, self.dealer]:
             self.deal(per)
-            self.deal(self.player)
+            self.deal(per)
             per.check_total()
 
     def score_check(self):
@@ -187,19 +191,61 @@ class Game:
         self.deck = deque()
         self.deck_check()
 
+def run_sim(args):
+    n_trials, exp_rate, learn_rate = args
+    sim = Simulation(exp_rate, learn_rate)
+    sim.trials(n_trials)
+    return sim.player.q_values
+
+
+def merge_q_values(q_dicts):
+    merged = defaultdict(lambda: {"count": 0, "success": 0.0})
+
+    for q in q_dicts:
+        for (state_action), data in q.items():
+            total_count = merged[state_action]["count"] + data["count"]
+
+            if total_count == 0:
+                continue
+
+            merged[state_action]["success"] = (
+                merged[state_action]["success"] * merged[state_action]["count"]
+                + data["success"] * data["count"]
+            ) / total_count
+
+            merged[state_action]["count"] = total_count
+
+    return merged
+
+class Simulation:
+    def __init__(self, exp_rate = 0.2, learn_rate = 0.1):
+        self.player = Player(exp_rate = exp_rate, learn_rate = learn_rate)
+        self.game = Game(player=self.player)
+
+    def trials(self, n = 10000):
+        for i in range(n):
+            self.game.play()
+            self.game.reset()
+        return self.player.q_values
+
+    def results(self):
+        return self.player.q_values, self.game.stats
+
+def mp_sim(num_worker = 8, trials = 1000000, exp_rate = 0.2, learn_rate = 0.1):
+
+    trials_per_worker = trials // num_worker
+
+    with mp.Pool(num_worker) as p:
+        q_values_list = p.map(
+            run_sim,
+            [(trials_per_worker, exp_rate, learn_rate)] * num_worker
+        )
+
+    return merge_q_values(q_values_list)
+
 
 if __name__ == '__main__':
 
-    n = 1000000
+    res = mp_sim()
+    print(res)
 
-    player = Player()
-    game = Game(player)
-
-    for i in range(n):
-        if i % 100000 == 0:
-            print(f'Game #{i}, Games Remaining {n - i}')
-        game.play()
-        game.reset()
-
-    print(game.stats)
-    print(player.q_values)
