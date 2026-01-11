@@ -1,8 +1,7 @@
 import random
 import time
 import numpy as np
-from collections import deque
-from collections import defaultdict
+from collections import deque, defaultdict
 
 class Cards:
     KING = 10
@@ -62,20 +61,21 @@ class Player(Person):
             self.stand = True
             return
 
-        # exploration - greedy policy to explore sample space
+        # epsilon soft policy MC
+        # random state exploration
         if random.uniform(0, 1) < self.exploration_rate:
             action = random.choice(self.actions)
             self.stand = action
             self.states.append((state, action))
 
-        # greedy for optimal policy
+        # greedy action
         else:
             self.stand = max(self.actions, key = lambda x: self.q_values[(state, x)]["success"])
             self.states.append((state, self.stand))
 
         return
 
-    # go back through the seen states and update mean depending on the game outcome
+    # updating action value function
     def reward(self, loss):
         if loss is None:
             update = 0
@@ -106,7 +106,6 @@ class Dealer(Person):
         if self.total >= 17:
             self.stand = True
 
-
 class Game:
     def __init__(self, player = Player()):
         self.player = player
@@ -131,12 +130,10 @@ class Game:
             self.deck = deque(new_deck)
 
     def start_deal(self):
-        self.deal(self.player)
-        self.deal(self.player)
-        self.deal(self.dealer)
-        self.deal(self.dealer)
-        self.player.check_total()
-        self.dealer.check_total()
+        for per in [self.player, self.dealer]:
+            self.deal(per)
+            self.deal(self.player)
+            per.check_total()
 
     def score_check(self):
         if self.player.total > 21:
