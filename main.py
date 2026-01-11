@@ -1,6 +1,4 @@
 import random
-import time
-import numpy as np
 from collections import deque, defaultdict
 
 class Cards:
@@ -107,11 +105,12 @@ class Dealer(Person):
             self.stand = True
 
 class Game:
-    def __init__(self, player = Player()):
+    def __init__(self, player = Player(), num_decks = 6):
         self.player = player
         self.dealer = Dealer()
         self.playing = True
         self.dealer_win = None
+        self.num_decks = num_decks
         self.deck = deque()
         self.deck_check()
         self.stats = {"Player Wins": 0, "Dealer Wins": 0, "Draws": 0}
@@ -125,7 +124,7 @@ class Game:
 
     def deck_check(self):
         if len(self.deck) < len(DECK):
-            new_deck = DECK.copy() * 4
+            new_deck = DECK.copy() * self.num_decks
             random.shuffle(new_deck)
             self.deck = deque(new_deck)
 
